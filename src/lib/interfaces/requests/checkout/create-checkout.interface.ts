@@ -1,3 +1,5 @@
+import { CheckoutItemParams } from './checkout-item.interface';
+
 export interface CreateCheckoutParams {
   /** Required if amount and currency are not provided: An array of items being purchased. */
   items?: CheckoutItemParams[];

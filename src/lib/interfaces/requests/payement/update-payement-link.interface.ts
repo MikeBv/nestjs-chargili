@@ -1,3 +1,5 @@
+import { UpdatePaymentLinkItem } from './update-payement-link-item.interface';
+
 export interface UpdatePaymentLinkParams {
   /** Optional: A descriptive name for the payment link. */
   name?: string;

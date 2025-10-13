@@ -1,3 +1,5 @@
+import { Address } from './address.interface';
+
 /** Represents a checkout object with details of the transaction. */
 export interface Checkout {
   /* Unique identifier of the checkout. */

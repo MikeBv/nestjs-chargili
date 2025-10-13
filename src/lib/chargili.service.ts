@@ -1,17 +1,6 @@
+import { Injectable } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
-import {
-  Injectable,
-  InternalServerErrorException,
-  BadRequestException,
-  NotFoundException,
-  UnauthorizedException,
-  Inject,
-} from '@nestjs/common';
-import { firstValueFrom, catchError } from 'rxjs';
-import { AxiosError, Method } from 'axios';
-import * as Joi from 'joi'; // You'll need to install Joi: npm install joi @types/joi
-// Import other types and consts from your project
-import { CHARGILY_LIVE_URL, CHARGILY_TEST_URL } from '../consts';
+import { lastValueFrom } from 'rxjs';
 import {
   Balance,
   Checkout,
@@ -20,276 +9,276 @@ import {
   Price,
   Product,
   ProductPrice,
-} from './interfaces';
+} from './interfaces/data';
 import {
-  CheckoutItemParams,
   CreateCheckoutParams,
   CreateCustomerParams,
   CreatePaymentLinkParams,
   CreatePriceParams,
   CreateProductParams,
-  PaymentLinkItemParams,
   UpdateCustomerParams,
   UpdatePaymentLinkParams,
   UpdatePriceParams,
   UpdateProductParams,
-} from './interfaces';
-import { DeleteItemResponse, ListResponse } from './interfaces';
-
-// --- Custom Chargily API Error Structure ---
-interface ChargilyApiError {
-  status: 'error';
-  message: string;
-  errors?: any;
-}
-
-// Custom Exception for API-specific errors
-export class ChargilyApiException extends InternalServerErrorException {
-  constructor(
-    message: string,
-    public readonly status: number,
-  ) {
-    super(message);
-  }
-}
-
-// Define Injection Token for Options (Best Practice)
-export const CHARGILY_CLIENT_OPTIONS = 'CHARGILY_CLIENT_OPTIONS';
-
-/**
- * Configuration options for ChargilyService.
- */
-export interface ChargilyClientOptions {
-  /**
-   * The API key for authentication with Chargily API.
-   * @type {string}
-   */
-  api_key: string;
-
-  /**
-   * Operating mode of the client, indicating whether to use the test or live API endpoints.
-   * @type {'test' | 'live'}
-   */
-  mode: 'test' | 'live';
-}
-
-// ----------------------------------------------------------------------
-// NESTJS SERVICE IMPLEMENTATION
-// ----------------------------------------------------------------------
+} from './interfaces/requests';
+import { DeleteItemResponse, ListResponse } from './interfaces/responses';
 
 @Injectable()
-export class ChargilyService {
-  private readonly api_key: string;
-  private readonly base_url: string;
+export class ChargiliService {
+  constructor(private readonly httpService: HttpService) {}
 
-  // Joi Schemas for Validation
-  private createCheckoutSchema = Joi.object<CreateCheckoutParams>({
-    // Only 'success_url' and the mutual exclusivity are enforced here,
-    // the rest of the validation would be for all fields as per API spec.
-    success_url: Joi.string()
-      .uri({ scheme: ['http', 'https'] })
-      .required()
-      .messages({
-        'string.uri': 'Invalid success_url, it must begin with http or https.',
-      }),
-    items: Joi.array().optional(),
-    amount: Joi.number().optional(),
-    currency: Joi.string().optional(),
-  }).xor('items', 'amount'); // Ensures one of 'items' or 'amount' is present, but not both
-
-  /**
-   * Constructs a ChargilyService instance.
-   * Uses dependency injection for HttpService and custom options.
-   * @param {HttpService} httpService - NestJS's wrapper for Axios.
-   * @param {ChargilyClientOptions} options - Configuration options including API key and mode.
-   */
-  constructor(
-    private readonly httpService: HttpService,
-    @Inject(CHARGILY_CLIENT_OPTIONS) options: ChargilyClientOptions,
-  ) {
-    this.api_key = options.api_key;
-    this.base_url =
-      options.mode === 'test' ? CHARGILY_TEST_URL : CHARGILY_LIVE_URL;
-  }
-
-  // --- Exception Handling Utility ---
-  private handleError(error: AxiosError<ChargilyApiError>): never {
-    if (error.response) {
-      const status = error.response.status;
-      const data = error.response.data;
-      const message =
-        data.message || `Chargily API error with status ${status}`;
-
-      switch (status) {
-        case 400: // Bad Request (e.g., validation errors)
-          // Consider passing 'errors' object from Chargily if available
-          throw new BadRequestException(message);
-        case 401: // Unauthorized (e.g., invalid API key)
-        case 403: // Forbidden
-          throw new UnauthorizedException(message);
-        case 404: // Not Found
-          throw new NotFoundException(message);
-        default:
-          // For 5xx errors or unexpected 4xx errors
-          throw new ChargilyApiException(message, status);
-      }
-    } else if (error.request) {
-      // The request was made but no response was received (e.g., timeout, network error)
-      throw new InternalServerErrorException(
-        'No response received from Chargily API.',
-      );
-    } else {
-      // Something happened in setting up the request that triggered an Error
-      throw new InternalServerErrorException(
-        `Error setting up Chargily API request: ${error.message}`,
-      );
-    }
-  }
-
-  /**
-   * Internal method to make requests to the Chargily API using HttpService.
-   * Includes structured error handling.
-   * @param {string} endpoint - The endpoint path.
-   * @param {Method} method - The HTTP method.
-   * @param {any} [data] - The request payload.
-   * @returns {Promise<T>} - The response data.
-   * @private
-   */
-  private async request<T>(
-    endpoint: string,
-    method: Method = 'GET',
-    data?: any,
-  ): Promise<T> {
-    const url = `${this.base_url}/${endpoint}`;
-    const headers = {
-      Authorization: `Bearer ${this.api_key}`,
-      'Content-Type': 'application/json',
-    };
-
-    const request$ = this.httpService
-      .request<T>({
-        url,
-        method,
-        headers,
-        data, // data for POST/PATCH, params for GET query
-      })
-      .pipe(
-        catchError((error: AxiosError<ChargilyApiError>) => {
-          this.handleError(error);
-          // CatchError expects to return an Observable, but handleError throws,
-          // so this part is technically unreachable, but required for type safety.
-          return null as any;
-        }),
-      );
-
-    const response = await firstValueFrom(request$);
+  public async getBalance(): Promise<Balance> {
+    const response = await lastValueFrom(this.httpService.get('/balance'));
     return response.data;
   }
 
-  // ----------------------------------------------------------------------
-  // PUBLIC API METHODS
-  // ----------------------------------------------------------------------
-
-  /**
-   * Retrieves the current balance information from the Chargily API.
-   * @returns {Promise<Balance>} - A promise that resolves to the balance information.
-   */
-  public async getBalance(): Promise<Balance> {
-    return this.request<Balance>('balance', 'GET');
-  }
-
-  // --- CUSTOMER METHODS ---
-
-  /**
-   * Creates a new customer with specified details.
-   * NOTE: For full production readiness, 'customer_data' should be validated here with Joi/Class-Validator.
-   * @param {CreateCustomerParams} customer_data - The data for creating a new customer.
-   * @returns {Promise<Customer>} - A promise that resolves to the newly created customer.
-   */
   public async createCustomer(
     customer_data: CreateCustomerParams,
   ): Promise<Customer> {
-    return this.request<Customer>('customers', 'POST', customer_data);
+    const response = await lastValueFrom(
+      this.httpService.post('/customers', customer_data),
+    );
+    return response.data;
   }
 
-  // ... (Other Customer, Product, Price, and PaymentLink methods would follow the same pattern)
-
-  /**
-   * Fetches a customer by their unique identifier.
-   * @param {string} customer_id - The ID of the customer to retrieve.
-   * @returns {Promise<Customer>} - A promise that resolves to the customer details.
-   */
   public async getCustomer(customer_id: string): Promise<Customer> {
-    if (!customer_id) throw new BadRequestException('Customer ID is required.');
-    return this.request<Customer>(`customers/${customer_id}`, 'GET');
+    const response = await lastValueFrom(
+      this.httpService.get(`/customers/${customer_id}`),
+    );
+    return response.data;
   }
 
-  // ----------------------------------------------------------------------
-  // CHECKOUT METHODS - Demonstrating Validation
-  // ----------------------------------------------------------------------
+  public async updateCustomer(
+    customer_id: string,
+    update_data: UpdateCustomerParams,
+  ): Promise<Customer> {
+    const response = await lastValueFrom(
+      this.httpService.patch(`/customers/${customer_id}`, update_data),
+    );
+    return response.data;
+  }
 
-  /**
-   * Creates a new checkout session with the specified details, including validation.
-   * @param {CreateCheckoutParams} checkout_data - The details for the new checkout session.
-   * @returns {Promise<Checkout>} The created checkout object.
-   */
+  public async deleteCustomer(
+    customer_id: string,
+  ): Promise<DeleteItemResponse> {
+    const response = await lastValueFrom(
+      this.httpService.delete(`/customers/${customer_id}`),
+    );
+    return response.data;
+  }
+
+  public async listCustomers(
+    per_page: number = 10,
+    page: number = 1,
+  ): Promise<ListResponse<Customer>> {
+    const response = await lastValueFrom(
+      this.httpService.get('/customers', { params: { per_page, page } }),
+    );
+    return response.data;
+  }
+
+  public async createProduct(
+    product_data: CreateProductParams,
+  ): Promise<Product> {
+    const response = await lastValueFrom(
+      this.httpService.post('/products', product_data),
+    );
+    return response.data;
+  }
+
+  public async updateProduct(
+    product_id: string,
+    update_data: UpdateProductParams,
+  ): Promise<Product> {
+    const response = await lastValueFrom(
+      this.httpService.post(`/products/${product_id}`, update_data),
+    );
+    return response.data;
+  }
+
+  public async getProduct(product_id: string): Promise<Product> {
+    const response = await lastValueFrom(
+      this.httpService.get(`/products/${product_id}`),
+    );
+    return response.data;
+  }
+
+  public async listProducts(
+    per_page: number = 10,
+    page: number = 1,
+  ): Promise<ListResponse<Product>> {
+    const response = await lastValueFrom(
+      this.httpService.get('/products', { params: { per_page, page } }),
+    );
+    return response.data;
+  }
+
+  public async deleteProduct(product_id: string): Promise<DeleteItemResponse> {
+    const response = await lastValueFrom(
+      this.httpService.delete(`/products/${product_id}`),
+    );
+    return response.data;
+  }
+
+  public async getProductPrices(
+    product_id: string,
+    per_page: number = 10,
+    page: number = 1,
+  ): Promise<ListResponse<ProductPrice>> {
+    const response = await lastValueFrom(
+      this.httpService.get(`/products/${product_id}/prices`, {
+        params: { per_page, page },
+      }),
+    );
+    return response.data;
+  }
+
+  public async createPrice(price_data: CreatePriceParams): Promise<Price> {
+    const response = await lastValueFrom(
+      this.httpService.post('/prices', price_data),
+    );
+    return response.data;
+  }
+
+  public async updatePrice(
+    price_id: string,
+    update_data: UpdatePriceParams,
+  ): Promise<Price> {
+    const response = await lastValueFrom(
+      this.httpService.post(`/prices/${price_id}`, update_data),
+    );
+    return response.data;
+  }
+
+  public async getPrice(price_id: string): Promise<Price> {
+    const response = await lastValueFrom(
+      this.httpService.get(`/prices/${price_id}`),
+    );
+    return response.data;
+  }
+
+  public async listPrices(
+    per_page: number = 10,
+    page: number = 1,
+  ): Promise<ListResponse<Price>> {
+    const response = await lastValueFrom(
+      this.httpService.get('/prices', { params: { per_page, page } }),
+    );
+    return response.data;
+  }
+
   public async createCheckout(
     checkout_data: CreateCheckoutParams,
   ): Promise<Checkout> {
-    // 1. Validation Logic (using Joi)
-    const { error } = this.createCheckoutSchema.validate(checkout_data, {
-      abortEarly: false,
-    });
-
-    if (error) {
-      // Map Joi validation errors to a NestJS BadRequestException
-      const validationErrors = error.details.map((detail) => detail.message);
-      throw new BadRequestException({
-        message: 'Validation failed for checkout data.',
-        errors: validationErrors,
-      });
+    if (
+      !checkout_data.success_url.startsWith('http') &&
+      !checkout_data.success_url.startsWith('https')
+    ) {
+      throw new Error('Invalid success_url, it must begin with http or https.');
     }
 
-    // 2. API Request
-    return this.request<Checkout>('checkouts', 'POST', checkout_data);
+    if (
+      !checkout_data.items &&
+      (!checkout_data.amount || !checkout_data.currency)
+    ) {
+      throw new Error(
+        'The items field is required when amount and currency are not present.',
+      );
+    }
+
+    const response = await lastValueFrom(
+      this.httpService.post('/checkouts', checkout_data),
+    );
+    return response.data;
   }
 
-  /**
-   * Retrieves details of a specific checkout session by its ID.
-   * @param {string} checkout_id - The ID of the checkout session to retrieve.
-   * @returns {Promise<Checkout>} The requested checkout object.
-   */
   public async getCheckout(checkout_id: string): Promise<Checkout> {
-    if (!checkout_id) throw new BadRequestException('Checkout ID is required.');
-    return this.request<Checkout>(`checkouts/${checkout_id}`, 'GET');
+    const response = await lastValueFrom(
+      this.httpService.get(`/checkouts/${checkout_id}`),
+    );
+    return response.data;
   }
 
-  // Add the remaining methods here, following the `request` pattern
+  public async listCheckouts(
+    per_page: number = 10,
+    page: number = 1,
+  ): Promise<ListResponse<Checkout>> {
+    const response = await lastValueFrom(
+      this.httpService.get('/checkouts', { params: { per_page, page } }),
+    );
+    return response.data;
+  }
 
-  // ... (All other methods like updateCustomer, listProducts, createPrice, etc.)
+  public async getCheckoutItems(
+    checkout_id: string,
+    per_page: number = 10,
+    page: number = 1,
+  ): Promise<ListResponse<any>> {
+    const response = await lastValueFrom(
+      this.httpService.get(`/checkouts/${checkout_id}/items`, {
+        params: { per_page, page },
+      }),
+    );
+    return response.data;
+  }
+
+  public async expireCheckout(checkout_id: string): Promise<Checkout> {
+    const response = await lastValueFrom(
+      this.httpService.post(`/checkouts/${checkout_id}/expire`, null),
+    );
+    return response.data;
+  }
+
+  public async createPaymentLink(
+    payment_link_data: CreatePaymentLinkParams,
+  ): Promise<PaymentLink> {
+    const response = await lastValueFrom(
+      this.httpService.post('/payment-links', payment_link_data),
+    );
+    return response.data;
+  }
+
+  public async updatePaymentLink(
+    payment_link_id: string,
+    update_data: UpdatePaymentLinkParams,
+  ): Promise<PaymentLink> {
+    const response = await lastValueFrom(
+      this.httpService.post(
+        `/payment-links/${payment_link_id}`,
+        update_data,
+      ),
+    );
+    return response.data;
+  }
+
+  public async getPaymentLink(payment_link_id: string): Promise<PaymentLink> {
+    const response = await lastValueFrom(
+      this.httpService.get(`/payment-links/${payment_link_id}`),
+    );
+    return response.data;
+  }
+
+  public async listPaymentLinks(
+    per_page: number = 10,
+    page: number = 1,
+  ): Promise<ListResponse<PaymentLink>> {
+    const response = await lastValueFrom(
+      this.httpService.get('/payment-links', { params: { per_page, page } }),
+    );
+    return response.data;
+  }
+
+  public async getPaymentLinkItems(
+    payment_link_id: string,
+    per_page: number = 10,
+    page: number = 1,
+  ): Promise<ListResponse<any>> {
+    const response = await lastValueFrom(
+      this.httpService.get(
+        `/payment-links/${payment_link_id}/items`,
+        { params: { per_page, page } },
+      ),
+    );
+    return response.data;
+  }
 }
-
-// Example of how the Service would be configured in a NestJS Module
-
-/*
-@Module({
-  imports: [
-    HttpModule.register({
-      timeout: 5000,
-      maxRedirects: 5,
-    }),
-  ],
-  providers: [
-    ChargilyService,
-    {
-      provide: CHARGILY_CLIENT_OPTIONS,
-      useValue: {
-        api_key: process.env.CHARGILY_API_KEY, // Get from environment
-        mode: process.env.NODE_ENV === 'production' ? 'live' : 'test',
-      } as ChargilyClientOptions,
-    },
-  ],
-  exports: [ChargilyService],
-})
-export class ChargilyModule {}
-*/
