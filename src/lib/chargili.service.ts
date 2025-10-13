@@ -28,7 +28,9 @@ export class ChargiliService {
   constructor(private readonly httpService: HttpService) {}
 
   public async getBalance(): Promise<Balance> {
-    const response = await lastValueFrom(this.httpService.get('/balance'));
+    const response = await lastValueFrom(
+      this.httpService.get<Balance>('/balance'),
+    );
     return response.data;
   }
 
@@ -36,14 +38,14 @@ export class ChargiliService {
     customer_data: CreateCustomerParams,
   ): Promise<Customer> {
     const response = await lastValueFrom(
-      this.httpService.post('/customers', customer_data),
+      this.httpService.post<Customer>('/customers', customer_data),
     );
     return response.data;
   }
 
   public async getCustomer(customer_id: string): Promise<Customer> {
     const response = await lastValueFrom(
-      this.httpService.get(`/customers/${customer_id}`),
+      this.httpService.get<Customer>(`/customers/${customer_id}`),
     );
     return response.data;
   }
@@ -53,7 +55,10 @@ export class ChargiliService {
     update_data: UpdateCustomerParams,
   ): Promise<Customer> {
     const response = await lastValueFrom(
-      this.httpService.patch(`/customers/${customer_id}`, update_data),
+      this.httpService.patch<Customer>(
+        `/customers/${customer_id}`,
+        update_data,
+      ),
     );
     return response.data;
   }
@@ -62,7 +67,7 @@ export class ChargiliService {
     customer_id: string,
   ): Promise<DeleteItemResponse> {
     const response = await lastValueFrom(
-      this.httpService.delete(`/customers/${customer_id}`),
+      this.httpService.delete<DeleteItemResponse>(`/customers/${customer_id}`),
     );
     return response.data;
   }
@@ -72,7 +77,9 @@ export class ChargiliService {
     page: number = 1,
   ): Promise<ListResponse<Customer>> {
     const response = await lastValueFrom(
-      this.httpService.get('/customers', { params: { per_page, page } }),
+      this.httpService.get<Customer>('/customers', {
+        params: { per_page, page },
+      }),
     );
     return response.data;
   }
@@ -81,7 +88,7 @@ export class ChargiliService {
     product_data: CreateProductParams,
   ): Promise<Product> {
     const response = await lastValueFrom(
-      this.httpService.post('/products', product_data),
+      this.httpService.post<Product>('/products', product_data),
     );
     return response.data;
   }
@@ -91,14 +98,17 @@ export class ChargiliService {
     update_data: UpdateProductParams,
   ): Promise<Product> {
     const response = await lastValueFrom(
-      this.httpService.post(`/products/${product_id}`, update_data),
+      this.httpService.post<UpdateProductParams>(
+        `/products/${product_id}`,
+        update_data,
+      ),
     );
     return response.data;
   }
 
   public async getProduct(product_id: string): Promise<Product> {
     const response = await lastValueFrom(
-      this.httpService.get(`/products/${product_id}`),
+      this.httpService.get<Product>(`/products/${product_id}`),
     );
     return response.data;
   }
@@ -108,14 +118,16 @@ export class ChargiliService {
     page: number = 1,
   ): Promise<ListResponse<Product>> {
     const response = await lastValueFrom(
-      this.httpService.get('/products', { params: { per_page, page } }),
+      this.httpService.get<Product>('/products', {
+        params: { per_page, page },
+      }),
     );
     return response.data;
   }
 
   public async deleteProduct(product_id: string): Promise<DeleteItemResponse> {
     const response = await lastValueFrom(
-      this.httpService.delete(`/products/${product_id}`),
+      this.httpService.delete<DeleteItemResponse>(`/products/${product_id}`),
     );
     return response.data;
   }
@@ -126,16 +138,19 @@ export class ChargiliService {
     page: number = 1,
   ): Promise<ListResponse<ProductPrice>> {
     const response = await lastValueFrom(
-      this.httpService.get(`/products/${product_id}/prices`, {
-        params: { per_page, page },
-      }),
+      this.httpService.get<ListResponse<ProductPrice>>(
+        `/products/${product_id}/prices`,
+        {
+          params: { per_page, page },
+        },
+      ),
     );
     return response.data;
   }
 
   public async createPrice(price_data: CreatePriceParams): Promise<Price> {
     const response = await lastValueFrom(
-      this.httpService.post('/prices', price_data),
+      this.httpService.post<Price>('/prices', price_data),
     );
     return response.data;
   }
@@ -145,14 +160,14 @@ export class ChargiliService {
     update_data: UpdatePriceParams,
   ): Promise<Price> {
     const response = await lastValueFrom(
-      this.httpService.post(`/prices/${price_id}`, update_data),
+      this.httpService.post<Price>(`/prices/${price_id}`, update_data),
     );
     return response.data;
   }
 
   public async getPrice(price_id: string): Promise<Price> {
     const response = await lastValueFrom(
-      this.httpService.get(`/prices/${price_id}`),
+      this.httpService.get<Price>(`/prices/${price_id}`),
     );
     return response.data;
   }
@@ -162,7 +177,7 @@ export class ChargiliService {
     page: number = 1,
   ): Promise<ListResponse<Price>> {
     const response = await lastValueFrom(
-      this.httpService.get('/prices', { params: { per_page, page } }),
+      this.httpService.get<Price>('/prices', { params: { per_page, page } }),
     );
     return response.data;
   }
@@ -187,14 +202,14 @@ export class ChargiliService {
     }
 
     const response = await lastValueFrom(
-      this.httpService.post('/checkouts', checkout_data),
+      this.httpService.post<Checkout>('/checkouts', checkout_data),
     );
     return response.data;
   }
 
   public async getCheckout(checkout_id: string): Promise<Checkout> {
     const response = await lastValueFrom(
-      this.httpService.get(`/checkouts/${checkout_id}`),
+      this.httpService.get<Checkout>(`/checkouts/${checkout_id}`),
     );
     return response.data;
   }
@@ -204,7 +219,9 @@ export class ChargiliService {
     page: number = 1,
   ): Promise<ListResponse<Checkout>> {
     const response = await lastValueFrom(
-      this.httpService.get('/checkouts', { params: { per_page, page } }),
+      this.httpService.get<ListResponse<Checkout>>('/checkouts', {
+        params: { per_page, page },
+      }),
     );
     return response.data;
   }
@@ -215,16 +232,19 @@ export class ChargiliService {
     page: number = 1,
   ): Promise<ListResponse<any>> {
     const response = await lastValueFrom(
-      this.httpService.get(`/checkouts/${checkout_id}/items`, {
-        params: { per_page, page },
-      }),
+      this.httpService.get<ListResponse<any>>(
+        `/checkouts/${checkout_id}/items`,
+        {
+          params: { per_page, page },
+        },
+      ),
     );
     return response.data;
   }
 
   public async expireCheckout(checkout_id: string): Promise<Checkout> {
     const response = await lastValueFrom(
-      this.httpService.post(`/checkouts/${checkout_id}/expire`, null),
+      this.httpService.post<Checkout>(`/checkouts/${checkout_id}/expire`, null),
     );
     return response.data;
   }
@@ -233,7 +253,10 @@ export class ChargiliService {
     payment_link_data: CreatePaymentLinkParams,
   ): Promise<PaymentLink> {
     const response = await lastValueFrom(
-      this.httpService.post('/payment-links', payment_link_data),
+      this.httpService.post<CreatePaymentLinkParams>(
+        '/payment-links',
+        payment_link_data,
+      ),
     );
     return response.data;
   }
@@ -243,7 +266,7 @@ export class ChargiliService {
     update_data: UpdatePaymentLinkParams,
   ): Promise<PaymentLink> {
     const response = await lastValueFrom(
-      this.httpService.post(
+      this.httpService.post<PaymentLink>(
         `/payment-links/${payment_link_id}`,
         update_data,
       ),
@@ -253,7 +276,7 @@ export class ChargiliService {
 
   public async getPaymentLink(payment_link_id: string): Promise<PaymentLink> {
     const response = await lastValueFrom(
-      this.httpService.get(`/payment-links/${payment_link_id}`),
+      this.httpService.get<PaymentLink>(`/payment-links/${payment_link_id}`),
     );
     return response.data;
   }
@@ -263,7 +286,9 @@ export class ChargiliService {
     page: number = 1,
   ): Promise<ListResponse<PaymentLink>> {
     const response = await lastValueFrom(
-      this.httpService.get('/payment-links', { params: { per_page, page } }),
+      this.httpService.get<ListResponse<PaymentLink>>('/payment-links', {
+        params: { per_page, page },
+      }),
     );
     return response.data;
   }
@@ -274,9 +299,11 @@ export class ChargiliService {
     page: number = 1,
   ): Promise<ListResponse<any>> {
     const response = await lastValueFrom(
-      this.httpService.get(
+      this.httpService.get<ListResponse<any>>(
         `/payment-links/${payment_link_id}/items`,
-        { params: { per_page, page } },
+        {
+          params: { per_page, page },
+        },
       ),
     );
     return response.data;
