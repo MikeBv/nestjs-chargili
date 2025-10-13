@@ -1,10 +1,13 @@
 {
-  "name": "nest-cloudinary",
+  "name": "nest-chargili",
   "version": "0.0.1",
   "description": "",
-  "author": "",
+  "author": {
+    "name": "zaki",
+    "url": "https://zakariagoumri.vercel.app/"
+  },
   "private": true,
-  "license": "UNLICENSED",
+  "license": "MIT",
   "scripts": {
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",

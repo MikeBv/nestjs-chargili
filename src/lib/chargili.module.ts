@@ -1,6 +1,9 @@
 import { Module } from '@nestjs/common';
 import { HttpModule } from '@nestjs/axios';
-import { ConfigurableModuleClass, MODULE_OPTIONS_TOKEN } from './module.builder';
+import {
+  ConfigurableModuleClass,
+  MODULE_OPTIONS_TOKEN,
+} from './module.builder';
 import { ChargiliService } from './chargili.service';
 import { ChargilyClientOptions } from './interfaces/data';
 import { CHARGILY_LIVE_URL, CHARGILY_TEST_URL } from './constants';
@@ -10,7 +13,9 @@ import { CHARGILY_LIVE_URL, CHARGILY_TEST_URL } from './constants';
     HttpModule.registerAsync({
       useFactory: (options: ChargilyClientOptions) => ({
         baseURL:
-          options.mode === 'test' ? CHARGILY_TEST_URL : CHARGILY_LIVE_URL,
+          options.mode === 'test'
+            ? `${CHARGILY_TEST_URL}${options.version ?? 'v2'}`
+            : `${CHARGILY_LIVE_URL}${options.version ?? 'v2'}`,
         headers: {
           Authorization: `Bearer ${options.api_key}`,
           'Content-Type': 'application/json',
