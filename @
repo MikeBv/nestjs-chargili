@@ -10,9 +10,6 @@
     "build": "tsc",
     "prepublishOnly": "pnpm run build" 
   },
-  "publishConfig": {
-  "access": "public"
-},
   "keywords": ["nestjs", "chargili", "payments"],
   "author": "Zaki <zakariagoumri213@gmail.com>",
   "license": "MIT",
