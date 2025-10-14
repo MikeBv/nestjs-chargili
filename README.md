@@ -1,24 +1,32 @@
-# Nest Chargili
+# @zaki-g/chargily
 
-A NestJS module for interacting with the Chargily API.
+A NestJS module for integrating Chargily Pay™ V2 payment gateway into your application.
+
+[![npm version](https://badge.fury.io/js/%40zaki-g%2Fchargily.svg)](https://www.npmjs.com/package/@zaki-g/chargily)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## Installation
 
 ```bash
-pnpm install nest-chargili
+npm install @zaki-g/chargily
+# or
+pnpm install @zaki-g/chargily
+# or
+yarn add @zaki-g/chargily
 ```
-## Configuration
 
-Import and configure the `ChargiliModule` in your `AppModule`.
+## Quick Start
+
+### 1. Import the Module
 
 ```typescript
 import { Module } from '@nestjs/common';
-import { ChargiliModule } from 'nest-chargili';
+import { ChargiliModule } from '@zaki-g/chargily';
 
 @Module({
   imports: [
     ChargiliModule.register({
-      api_key: 'YOUR_CHARGILI_API_KEY',
+      api_key: 'your_api_key_here',
       mode: 'test', // or 'live'
     }),
   ],
@@ -26,467 +34,398 @@ import { ChargiliModule } from 'nest-chargili';
 export class AppModule {}
 ```
 
-## Usage
+### 2. Async Configuration (Recommended)
 
-Inject the `ChargiliService` into your services or controllers.
+```typescript
+import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ChargiliModule } from '@zaki-g/chargily';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot(),
+    ChargiliModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => ({
+        api_key: configService.get<string>('CHARGILY_API_KEY'),
+        mode: configService.get<'test' | 'live'>('CHARGILY_MODE'),
+      }),
+      inject: [ConfigService],
+    }),
+  ],
+})
+export class AppModule {}
+```
+
+### 3. Use the Service
 
 ```typescript
 import { Injectable } from '@nestjs/common';
-import { HttpService } from '@nestjs/axios';
-import { lastValueFrom } from 'rxjs';
-import {
-  Balance,
-  Checkout,
-  Customer,
-  PaymentLink,
-  Price,
-  Product,
-  ProductPrice,
-} from './interfaces/data';
-import {
-  CreateCheckoutParams,
-  CreateCustomerParams,
-  CreatePaymentLinkParams,
-  CreatePriceParams,
-  CreateProductParams,
-  UpdateCustomerParams,
-  UpdatePaymentLinkParams,
-  UpdatePriceParams,
-  UpdateProductParams,
-} from './interfaces/requests';
-import { DeleteItemResponse, ListResponse } from './interfaces/responses';
+import { ChargiliService } from '@zaki-g/chargily';
 
-/**
- * A client for interacting with Chargily's API, supporting operations for customers, products, prices, checkouts, and payment links.
- */
 @Injectable()
-export class ChargiliService {
-  constructor(private readonly httpService: HttpService) {}
+export class PaymentService {
+  constructor(private readonly chargilyService: ChargiliService) {}
 
-  /**
-   * Retrieves the current balance information from the Chargily API.
-   * @returns {Promise<Balance>} - A promise that resolves to the balance information.
-   */
-  public async getBalance(): Promise<Balance> {
-    const response = await lastValueFrom(
-      this.httpService.get<Balance>('/balance'),
-    );
-    return response.data;
-  }
+  async createPayment() {
+    const checkout = await this.chargilyService.createCheckout({
+      amount: 5000, // Amount in cents (50.00 DZD)
+      currency: 'dzd',
+      success_url: 'https://your-site.com/success',
+      failure_url: 'https://your-site.com/failure',
+    });
 
-  /**
-   * Creates a new customer with specified details.
-   * @param {CreateCustomerParams} customer_data - The data for creating a new customer.
-   * @returns {Promise<Customer>} - A promise that resolves to the newly created customer.
-   */
-  public async createCustomer(
-    customer_data: CreateCustomerParams,
-  ): Promise<Customer> {
-    const response = await lastValueFrom(
-      this.httpService.post<Customer>('/customers', customer_data),
-    );
-    return response.data;
-  }
-
-  /**
-   * Fetches a customer by their unique identifier.
-   * @param {string} customer_id - The ID of the customer to retrieve.
-   * @returns {Promise<Customer>} - A promise that resolves to the customer details.
-   */
-  public async getCustomer(customer_id: string): Promise<Customer> {
-    const response = await lastValueFrom(
-      this.httpService.get<Customer>(`/customers/${customer_id}`),
-    );
-    return response.data;
-  }
-
-  /**
-   * Updates an existing customer's details.
-   * @param {string} customer_id - The ID of the customer to update.
-   * @param {UpdateCustomerParams} update_data - New data for updating the customer.
-   * @returns {Promise<Customer>} - A promise that resolves to the updated customer details.
-   */
-  public async updateCustomer(
-    customer_id: string,
-    update_data: UpdateCustomerParams,
-  ): Promise<Customer> {
-    const response = await lastValueFrom(
-      this.httpService.patch<Customer>(
-        `/customers/${customer_id}`,
-        update_data,
-      ),
-    );
-    return response.data;
-  }
-
-  /**
-   * Deletes a customer by their unique identifier.
-   * @param {string} customer_id - The ID of the customer to delete.
-   * @returns {Promise<DeleteItemResponse>} - A promise that resolves to the deletion response.
-   */
-  public async deleteCustomer(
-    customer_id: string,
-  ): Promise<DeleteItemResponse> {
-    const response = await lastValueFrom(
-      this.httpService.delete<DeleteItemResponse>(`/customers/${customer_id}`),
-    );
-    return response.data;
-  }
-
-  /**
-   * Lists customers, optionally paginated.
-   * @param {number} [per_page=10] - The number of customers to return per page.
-   * @param {number} [page=1] - The page number to retrieve.
-   * @returns {Promise<ListResponse<Customer>>} - A promise that resolves to a paginated list of customers.
-   */
-  public async listCustomers(
-    per_page: number = 10,
-    page: number = 1,
-  ): Promise<ListResponse<Customer>> {
-    const response = await lastValueFrom(
-      this.httpService.get<ListResponse<Customer>>('/customers', {
-        params: { per_page, page },
-      }),
-    );
-    return response.data;
-  }
-
-  /**
-   * Creates a new product with the given details.
-   * @param {CreateProductParams} product_data - The data for creating the product.
-   * @returns {Promise<Product>} The created product.
-   */
-  public async createProduct(
-    product_data: CreateProductParams,
-  ): Promise<Product> {
-    const response = await lastValueFrom(
-      this.httpService.post<Product>('/products', product_data),
-    );
-    return response.data;
-  }
-
-  /**
-   * Updates an existing product identified by its ID.
-   * @param {string} product_id - The ID of the product to update.
-   * @param {UpdateProductParams} update_data - The data to update the product with.
-   * @returns {Promise<Product>} The updated product.
-   */
-  public async updateProduct(
-    product_id: string,
-    update_data: UpdateProductParams,
-  ): Promise<Product> {
-    const response = await lastValueFrom(
-      this.httpService.post<Product>(`/products/${product_id}`, update_data),
-    );
-    return response.data;
-  }
-
-  /**
-   * Retrieves a single product by its ID.
-   * @param {string} product_id - The ID of the product to retrieve.
-   * @returns {Promise<Product>} The requested product.
-   */
-  public async getProduct(product_id: string): Promise<Product> {
-    const response = await lastValueFrom(
-      this.httpService.get<Product>(`/products/${product_id}`),
-    );
-    return response.data;
-  }
-
-  /**
-   * Lists all products with optional pagination.
-   * @param {number} [per_page=10] - The number of products to return per page.
-   * @param {number} [page=1] - The page number to retrieve.
-   * @returns {Promise<ListResponse<Product>>} A paginated list of products.
-   */
-  public async listProducts(
-    per_page: number = 10,
-    page: number = 1,
-  ): Promise<ListResponse<Product>> {
-    const response = await lastValueFrom(
-      this.httpService.get<ListResponse<Product>>('/products', {
-        params: { per_page, page },
-      }),
-    );
-    return response.data;
-  }
-
-  /**
-   * Deletes a product by its ID.
-   * @param {string} product_id - The ID of the product to delete.
-   * @returns {Promise<DeleteItemResponse>} Confirmation of the product deletion.
-   */
-  public async deleteProduct(product_id: string): Promise<DeleteItemResponse> {
-    const response = await lastValueFrom(
-      this.httpService.delete<DeleteItemResponse>(`/products/${product_id}`),
-    );
-    return response.data;
-  }
-
-  /**
-   * Retrieves all prices associated with a product, with optional pagination.
-   * @param {string} product_id - The ID of the product whose prices are to be retrieved.
-   * @param {number} [per_page=10] - The number of prices to return per page.
-   * @param {number} [page=1] - The page number to retrieve.
-   * @returns {Promise<ListResponse<ProductPrice>>} A paginated list of prices for the specified product.
-   */
-  public async getProductPrices(
-    product_id: string,
-    per_page: number = 10,
-    page: number = 1,
-  ): Promise<ListResponse<ProductPrice>> {
-    const response = await lastValueFrom(
-      this.httpService.get<ListResponse<ProductPrice>>(
-        `/products/${product_id}/prices`,
-        {
-          params: { per_page, page },
-        },
-      ),
-    );
-    return response.data;
-  }
-
-  /**
-   * Creates a new price for a product.
-   * @param {CreatePriceParams} price_data - The details of the new price to be created.
-   * @returns {Promise<Price>} The created price object.
-   */
-  public async createPrice(price_data: CreatePriceParams): Promise<Price> {
-    const response = await lastValueFrom(
-      this.httpService.post<Price>('/prices', price_data),
-    );
-    return response.data;
-  }
-
-  /**
-   * Updates the details of an existing price.
-   * @param {string} price_id - The ID of the price to be updated.
-   * @param {UpdatePriceParams} update_data - The new details for the price.
-   * @returns {Promise<Price>} The updated price object.
-   */
-  public async updatePrice(
-    price_id: string,
-    update_data: UpdatePriceParams,
-  ): Promise<Price> {
-    const response = await lastValueFrom(
-      this.httpService.post<Price>(`/prices/${price_id}`, update_data),
-    );
-    return response.data;
-  }
-
-  /**
-   * Retrieves a single price by its ID.
-   * @param {string} price_id - The ID of the price to retrieve.
-   * @returns {Promise<Price>} The requested price object.
-   */
-  public async getPrice(price_id: string): Promise<Price> {
-    const response = await lastValueFrom(
-      this.httpService.get<Price>(`/prices/${price_id}`),
-    );
-    return response.data;
-  }
-
-  /**
-   * Lists all prices for products with optional pagination.
-   * @param {number} [per_page=10] - The number of price objects to return per page.
-   * @param {number} [page=1] - The page number to retrieve.
-   * @returns {Promise<ListResponse<Price>>} A paginated list of prices.
-   */
-  public async listPrices(
-    per_page: number = 10,
-    page: number = 1,
-  ): Promise<ListResponse<Price>> {
-    const response = await lastValueFrom(
-      this.httpService.get<ListResponse<Price>>('/prices', {
-        params: { per_page, page },
-      }),
-    );
-    return response.data;
-  }
-
-  /**
-   * Creates a new checkout session with the specified details.
-   * @param {CreateCheckoutParams} checkout_data - The details for the new checkout session.
-   * @returns {Promise<Checkout>} The created checkout object.
-   */
-  public async createCheckout(
-    checkout_data: CreateCheckoutParams,
-  ): Promise<Checkout> {
-    if (
-      !checkout_data.success_url.startsWith('http') &&
-      !checkout_data.success_url.startsWith('https')
-    ) {
-      throw new Error('Invalid success_url, it must begin with http or https.');
-    }
-
-    if (
-      !checkout_data.items &&
-      (!checkout_data.amount || !checkout_data.currency)
-    ) {
-      throw new Error(
-        'The items field is required when amount and currency are not present.',
-      );
-    }
-
-    const response = await lastValueFrom(
-      this.httpService.post<Checkout>('/checkouts', checkout_data),
-    );
-    return response.data;
-  }
-
-  /**
-   * Retrieves details of a specific checkout session by its ID.
-   * @param {string} checkout_id - The ID of the checkout session to retrieve.
-   * @returns {Promise<Checkout>} The requested checkout object.
-   */
-  public async getCheckout(checkout_id: string): Promise<Checkout> {
-    const response = await lastValueFrom(
-      this.httpService.get<Checkout>(`/checkouts/${checkout_id}`),
-    );
-    return response.data;
-  }
-
-  /**
-   * Lists all checkout sessions with optional pagination.
-   * @param {number} [per_page=10] - The number of checkout objects to return per page.
-   * @param {number} [page=1] - The page number to retrieve.
-   * @returns {Promise<ListResponse<Checkout>>} A paginated list of checkout sessions.
-   */
-  public async listCheckouts(
-    per_page: number = 10,
-    page: number = 1,
-  ): Promise<ListResponse<Checkout>> {
-    const response = await lastValueFrom(
-      this.httpService.get<ListResponse<Checkout>>('/checkouts', {
-        params: { per_page, page },
-      }),
-    );
-    return response.data;
-  }
-
-  /**
-   * Retrieves all items included in a specific checkout session, with optional pagination.
-   * @param {string} checkout_id - The ID of the checkout session.
-   * @param {number} [per_page=10] - The number of items to return per page.
-   * @param {number} [page=1] - The page number to retrieve.
-   * @returns {Promise<ListResponse<any>>} A paginated list of items in the checkout session.
-   */
-  public async getCheckoutItems(
-    checkout_id: string,
-    per_page: number = 10,
-    page: number = 1,
-  ): Promise<ListResponse<any>> {
-    const response = await lastValueFrom(
-      this.httpService.get<ListResponse<any>>(
-        `/checkouts/${checkout_id}/items`,
-        {
-          params: { per_page, page },
-        },
-      ),
-    );
-    return response.data;
-  }
-
-  /**
-   * Expires a specific checkout session before its automatic expiration.
-   * @param {string} checkout_id - The ID of the checkout session to expire.
-   * @returns {Promise<Checkout>} The expired checkout object, indicating the session is no longer valid for payment.
-   */
-  public async expireCheckout(checkout_id: string): Promise<Checkout> {
-    const response = await lastValueFrom(
-      this.httpService.post<Checkout>(`/checkouts/${checkout_id}/expire`, null),
-    );
-    return response.data;
-  }
-
-  /**
-   * Creates a new payment link.
-   * @param {CreatePaymentLinkParams} payment_link_data - The details for the new payment link.
-   * @returns {Promise<PaymentLink>} The created payment link object.
-   */
-  public async createPaymentLink(
-    payment_link_data: CreatePaymentLinkParams,
-  ): Promise<PaymentLink> {
-    const response = await lastValueFrom(
-      this.httpService.post<PaymentLink>(
-        '/payment-links',
-        payment_link_data,
-      ),
-    );
-    return response.data;
-  }
-
-  /**
-   * Updates an existing payment link identified by its ID.
-   * @param {string} payment_link_id - The ID of the payment link to update.
-   * @param {UpdatePaymentLinkParams} update_data - The new details for the payment link.
-   * @returns {Promise<PaymentLink>} The updated payment link object.
-   */
-  public async updatePaymentLink(
-    payment_link_id: string,
-    update_data: UpdatePaymentLinkParams,
-  ): Promise<PaymentLink> {
-    const response = await lastValueFrom(
-      this.httpService.post<PaymentLink>(
-        `/payment-links/${payment_link_id}`,
-        update_data,
-      ),
-    );
-    return response.data;
-  }
-
-  /**
-   * Retrieves details of a specific payment link by its ID.
-   * @param {string} payment_link_id - The ID of the payment link to retrieve.
-   * @returns {Promise<PaymentLink>} The requested payment link object.
-   */
-  public async getPaymentLink(payment_link_id: string): Promise<PaymentLink> {
-    const response = await lastValueFrom(
-      this.httpService.get<PaymentLink>(`/payment-links/${payment_link_id}`),
-    );
-    return response.data;
-  }
-
-  /**
-   * Lists all payment links with optional pagination.
-   * @param {number} [per_page=10] - The number of payment link objects to return per page.
-   * @param {number} [page=1] - The page number to retrieve.
-   * @returns {Promise<ListResponse<PaymentLink>>} A paginated list of payment links.
-   */
-  public async listPaymentLinks(
-    per_page: number = 10,
-    page: number = 1,
-  ): Promise<ListResponse<PaymentLink>> {
-    const response = await lastValueFrom(
-      this.httpService.get<ListResponse<PaymentLink>>('/payment-links', {
-        params: { per_page, page },
-      }),
-    );
-    return response.data;
-  }
-
-  /**
-   * Retrieves all items associated with a specific payment link, with optional pagination.
-   * @param {string} payment_link_id - The ID of the payment link whose items are to be retrieved.
-   * @param {number} [per_page=10] - The number of items to return per page.
-   * @param {number} [page=1] - The page number to retrieve.
-   * @returns {Promise<ListResponse<any>>} A paginated list of items associated with the payment link.
-   */
-  public async getPaymentLinkItems(
-    payment_link_id: string,
-    per_page: number = 10,
-    page: number = 1,
-  ): Promise<ListResponse<any>> {
-    const response = await lastValueFrom(
-      this.httpService.get<ListResponse<any>>(
-        `/payment-links/${payment_link_id}/items`,
-        {
-          params: { per_page, page },
-        },
-      ),
-    );
-    return response.data;
+    return checkout.checkout_url; // Redirect user to this URL
   }
 }
-
 ```
+
+## Environment Variables
+
+Create a `.env` file:
+
+```env
+CHARGILY_API_KEY=test_pk_your_key_here
+CHARGILY_MODE=test
+```
+
+## API Reference
+
+### Balance
+
+Get your account balance information.
+
+```typescript
+const balance = await chargilyService.getBalance();
+```
+
+**[→ Chargily Docs: Balance](https://dev.chargily.com/pay-v2/api-reference/balance)**
+
+---
+
+### Customers
+
+#### Create Customer
+```typescript
+const customer = await chargilyService.createCustomer({
+  name: 'Ahmed Benali',
+  email: 'ahmed@example.com',
+  phone: '+213555123456',
+  address: {
+    country: 'DZ',
+    state: 'Algiers',
+    address: '123 Rue Didouche Mourad',
+  },
+});
+```
+
+#### Get Customer
+```typescript
+const customer = await chargilyService.getCustomer('customer_id');
+```
+
+#### Update Customer
+```typescript
+const customer = await chargilyService.updateCustomer('customer_id', {
+  email: 'newemail@example.com',
+});
+```
+
+#### Delete Customer
+```typescript
+await chargilyService.deleteCustomer('customer_id');
+```
+
+#### List Customers
+```typescript
+const customers = await chargilyService.listCustomers(10, 1); // per_page, page
+```
+
+**[→ Chargily Docs: Customers](https://dev.chargily.com/pay-v2/api-reference/customers/create)**
+
+---
+
+### Products
+
+#### Create Product
+```typescript
+const product = await chargilyService.createProduct({
+  name: 'Premium Subscription',
+  description: 'Monthly premium access',
+  images: ['https://example.com/image.jpg'],
+});
+```
+
+#### Get Product
+```typescript
+const product = await chargilyService.getProduct('product_id');
+```
+
+#### Update Product
+```typescript
+const product = await chargilyService.updateProduct('product_id', {
+  name: 'Updated Name',
+});
+```
+
+#### Delete Product
+```typescript
+await chargilyService.deleteProduct('product_id');
+```
+
+#### List Products
+```typescript
+const products = await chargilyService.listProducts(10, 1);
+```
+
+#### Get Product Prices
+```typescript
+const prices = await chargilyService.getProductPrices('product_id', 10, 1);
+```
+
+**[→ Chargily Docs: Products](https://dev.chargily.com/pay-v2/api-reference/products/create)**
+
+---
+
+### Prices
+
+#### Create Price
+```typescript
+const price = await chargilyService.createPrice({
+  amount: 5000, // 50.00 DZD
+  currency: 'dzd',
+  product_id: 'product_id',
+});
+```
+
+#### Get Price
+```typescript
+const price = await chargilyService.getPrice('price_id');
+```
+
+#### Update Price
+```typescript
+const price = await chargilyService.updatePrice('price_id', {
+  metadata: { featured: true },
+});
+```
+
+#### List Prices
+```typescript
+const prices = await chargilyService.listPrices(10, 1);
+```
+
+**[→ Chargily Docs: Prices](https://dev.chargily.com/pay-v2/api-reference/prices/create)**
+
+---
+
+### Checkouts
+
+#### Create Checkout
+```typescript
+const checkout = await chargilyService.createCheckout({
+  items: [
+    { price: 'price_id', quantity: 1 }
+  ],
+  success_url: 'https://your-site.com/success',
+  failure_url: 'https://your-site.com/failure',
+  customer_id: 'customer_id', // Optional
+  locale: 'ar', // 'ar', 'en', or 'fr'
+});
+
+// Redirect user to: checkout.checkout_url
+```
+
+#### Get Checkout
+```typescript
+const checkout = await chargilyService.getCheckout('checkout_id');
+```
+
+#### List Checkouts
+```typescript
+const checkouts = await chargilyService.listCheckouts(10, 1);
+```
+
+#### Get Checkout Items
+```typescript
+const items = await chargilyService.getCheckoutItems('checkout_id', 10, 1);
+```
+
+#### Expire Checkout
+```typescript
+await chargilyService.expireCheckout('checkout_id');
+```
+
+**[→ Chargily Docs: Checkouts](https://dev.chargily.com/pay-v2/api-reference/checkouts/create)**
+
+---
+
+### Payment Links
+
+#### Create Payment Link
+```typescript
+const paymentLink = await chargilyService.createPaymentLink({
+  name: 'Product Payment',
+  items: [
+    { 
+      price: 'price_id', 
+      quantity: 1,
+      adjustable_quantity: false 
+    }
+  ],
+  after_completion_message: 'Thank you!',
+});
+
+// Share: paymentLink.url
+```
+
+#### Get Payment Link
+```typescript
+const link = await chargilyService.getPaymentLink('payment_link_id');
+```
+
+#### Update Payment Link
+```typescript
+const link = await chargilyService.updatePaymentLink('payment_link_id', {
+  name: 'Updated Name',
+});
+```
+
+#### List Payment Links
+```typescript
+const links = await chargilyService.listPaymentLinks(10, 1);
+```
+
+#### Get Payment Link Items
+```typescript
+const items = await chargilyService.getPaymentLinkItems('payment_link_id', 10, 1);
+```
+
+**[→ Chargily Docs: Payment Links](https://dev.chargily.com/pay-v2/api-reference/payment-links/create)**
+
+---
+
+## Complete Example
+
+```typescript
+import { Injectable } from '@nestjs/common';
+import { ChargiliService } from '@zaki-g/chargily';
+
+@Injectable()
+export class OrderService {
+  constructor(private readonly chargilyService: ChargiliService) {}
+
+  async processOrder(userId: string, items: any[]) {
+    // 1. Create or get customer
+    const customer = await this.chargilyService.createCustomer({
+      name: 'Customer Name',
+      email: 'customer@example.com',
+    });
+
+    // 2. Create checkout
+    const checkout = await this.chargilyService.createCheckout({
+      items: items.map(item => ({
+        price: item.priceId,
+        quantity: item.quantity,
+      })),
+      customer_id: customer.id,
+      success_url: `https://your-site.com/orders/${orderId}/success`,
+      failure_url: `https://your-site.com/orders/${orderId}/failure`,
+      locale: 'ar',
+      metadata: {
+        order_id: orderId,
+        user_id: userId,
+      },
+    });
+
+    return {
+      checkoutId: checkout.id,
+      checkoutUrl: checkout.checkout_url,
+    };
+  }
+
+  async verifyPayment(checkoutId: string) {
+    const checkout = await this.chargilyService.getCheckout(checkoutId);
+    return checkout.status === 'paid';
+  }
+}
+```
+
+## Payment Flow
+
+1. **Create Product & Price** → One-time setup
+2. **Create Customer** → Optional, for tracking
+3. **Create Checkout** → Generate payment URL
+4. **Redirect User** → To `checkout_url`
+5. **Verify Payment** → Check checkout status or use webhooks
+
+**[→ Full Integration Guide](https://dev.chargily.com/pay-v2/the-full-guide/first-api-request)**
+
+## Webhooks
+
+For webhook handling, refer to Chargily's webhook documentation:
+
+**[→ Chargily Docs: Webhooks](https://dev.chargily.com/pay-v2/webhooks)**
+
+## TypeScript Support
+
+This package is written in TypeScript and includes full type definitions.
+
+```typescript
+import { 
+  ChargiliService, 
+  Customer, 
+  Checkout, 
+  Product,
+  CreateCheckoutParams 
+} from '@zaki-g/chargily';
+```
+
+## Error Handling
+
+```typescript
+try {
+  const checkout = await chargilyService.createCheckout(data);
+} catch (error) {
+  console.error('Chargily Error:', error.message);
+  // Handle error appropriately
+}
+```
+
+## Testing
+
+Use test mode for development:
+
+```typescript
+ChargiliModule.register({
+  api_key: 'test_pk_...',
+  mode: 'test',
+})
+```
+
+Get test API keys from [Chargily Dashboard](https://pay.chargily.com/test/dashboard).
+
+## Resources
+
+- [Chargily Pay Documentation](https://dev.chargily.com/pay-v2/introduction)
+- [API Reference](https://dev.chargily.com/pay-v2/api-reference/introduction)
+- [Chargily Dashboard](https://pay.chargily.com/test/dashboard)
+- [Support](https://chargi.link/PayTelegramCommunity)
+
+## Contributing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for contribution guidelines.
+
+## License
+
+MIT © [Zaki](https://github.com/Zaki-goumri)
+
+## Support
+
+- 🐛 [Report a Bug](https://github.com/Zaki-goumri/nestjs-chargili/issues)
+- 💡 [Request a Feature](https://github.com/Zaki-goumri/nestjs-chargili/issues)
+- 💬 [Chargily Community](https://chargi.link/PayTelegramCommunity)
+
+---
+
+Made with ❤️ for the Algerian developer community
